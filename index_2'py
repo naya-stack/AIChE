@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.patches import Rectangle, Circle
+
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.set_xlim(0, 10)
+ax.set_ylim(0, 10)
+ax.axis('off') # Hide axes for a cinematic look
+fig.patch.set_facecolor('black')
+
+# --- LAYERS ---
+# We simulate layers by changing the scale and content of a central rectangle
+center_x, center_y = 5, 5
+
+# Layer 1: Smartphone (The outer box)
+phone = Rectangle((2, 2), 6, 10, linewidth=3, edgecolor='cyan', facecolor='none')
+ax.add_patch(phone)
+screen = Rectangle((2.5, 2.5), 5, 9, color='#0f172a') # Dark screen
+ax.add_patch(screen)
+text_phone = ax.text(5, 5, "PHONE", color='white', ha='center', va='center', fontsize=20)
+
+# Layer 2: Motherboard (Grid of circuits) - Hidden initially
+circuits = []
+for i in range(5):
+    line = plt.Line2D([], [], color='#10b981', lw=2) # Green circuits
+    ax.add_line(line)
+    circuits.append(line)
+
+# Layer 3: Transistor (Gold/Red squares) - Hidden initially
+transistor = Rectangle((4, 4), 2, 2, color='#eab308', alpha=0) # Gold
+ax.add_patch(transistor)
+
+# Layer 4: Atoms (Dots) - Hidden initially
+atoms_x = np.random.uniform(4, 6, 20)
+atoms_y = np.random.uniform(4, 6, 20)
+atoms_scatter = ax.scatter(atoms_x, atoms_y, s=0, c='cyan', alpha=0.8)
+
+# Text Labels
+label = ax.text(5, 0.5, "", color='white', ha='center', fontsize=14, fontweight='bold')
+
+# --- ANIMATION LOGIC ---
+def init():
+    return [phone, screen, text_phone, transistor, atoms_scatter, label] + circuits
+
+def update(frame):
+    # Phase 1: Phone View (Frames 0-50)
+    if frame < 50:
+        scale = 1 + (frame / 50) * 0.5
+        label.set_text("Scale: Macro (Device)")
+    
+    # Phase 2: Motherboard (Frames 50-100)
+    elif frame < 100:
+        # Fade out phone
+        phone.set_alpha(max(0, 1 - (frame-50)/20))
+        screen.set_alpha(max(0, 1 - (frame-50)/20))
+        text_phone.set_alpha(max(0, 1 - (frame-50)/20))
+        
+        # Zoom in / Draw Circuits
+        zoom_factor = (frame - 50) / 50
+        for i, line in enumerate(circuits):
+            line.set_data([2 + i, 8 - i], [2 + i*0.5, 8 - i*0.5])
+            line.set_alpha(zoom_factor)
+        label.set_text("Scale: Micro (Motherboard)")
+
+    # Phase 3: Transistor (Frames 100-150)
+    elif frame < 150:
+        # Fade out circuits
+        for line in circuits:
+            line.set_alpha(max(0, 1 - (frame-100)/20))
+        
+        # Show Transistor
+        transistor.set_alpha(min(1, (frame-100)/10))
+        # Zoom effect by expanding rectangle
+        s = 2 + (frame-100)*0.05
+        transistor.set_width(s)
+        transistor.set_height(s)
+        transistor.set_xy((5 - s/2, 5 - s/2))
+        label.set_text("Scale: Nano (Transistor)")
+
+    # Phase 4: Atoms (Frames 150-200)
+    else:
+        transistor.set_alpha(max(0, 1 - (frame-150)/20))
+        
+        # Expand Atoms
+        size = (frame - 150) * 10
+        atoms_scatter.set_sizes([size]*20)
+        atoms_scatter.set_alpha(1)
+        
+        # Jiggle atoms slightly (thermal vibration)
+        new_x = atoms_x + np.random.uniform(-0.1, 0.1, 20)
+        new_y = atoms_y + np.random.uniform(-0.1, 0.1, 20)
+        atoms_scatter.set_offsets(np.c_[new_x, new_y])
+        label.set_text("Scale: Angstrom (Atomic Lattice)")
+
+    return [phone, screen, text_phone, transistor, atoms_scatter, label] + circuits
+
+# Create Animation
+ani = animation.FuncAnimation(fig, update, frames=200, init_func=init, interval=50, blit=False)
+
+plt.show()
